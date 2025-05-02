@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>잡담 탐지기</title>
+  <style>
+    #status {
+      font-size: 24px;
+      font-weight: bold;
+      margin: 20px;
+    }
+    #image {
+      width: 300px;
+      height: auto;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>독서실 잡담 탐지기</h1>
+  <div id="status">상태: 마이크가 활성화되지 않았습니다.</div>
+  <img id="image" src="quiet.jpg" alt="조용한 상태">
+
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image"></script>
+  <script>
+    let model;
+    let isTalking = false;
+
+    async function loadModel() {
+      const URL = https://teachablemachine.withgoogle.com/models/zvC-4aSDG/; // 여기에 Teachable Machine 모델 URL을 입력
+      model = await tmImage.load(URL + "/model.json", URL + "/metadata.json");
+      detectSound();
+    }
+
+    async function detectSound() {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const analyser = audioContext.createAnalyser();
+      const microphone = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      const source = audioContext.createMediaStreamSource(microphone);
+      source.connect(analyser);
+
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      function detect() {
+        analyser.getByteFrequencyData(dataArray);
+        let talkingDetected = false;
+
+        // 소리가 감지되면 잡담으로 인식
+        for (let i = 0; i < dataArray.length; i++) {
+          if (dataArray[i] > 50) { // 소리 임계값 설정
+            talkingDetected = true;
+            break;
+          }
+        }
+
+        if (talkingDetected !== isTalking) {
+          isTalking = talkingDetected;
+          updateUI();
+        }
+
+        requestAnimationFrame(detect);
+      }
+
+      detect();
+    }
+
+    function updateUI() {
+      const status = document.getElementById("status");
+      const image = document.getElementById("image");
+
+      if (isTalking) {
+        status.textContent = "상태: 잡담 감지됨!";
+        image.src = "warning.jpg"; // 잡담 감지시 경고 이미지
+      } else {
+        status.textContent = "상태: 조용합니다.";
+        image.src = "quiet.jpg"; // 조용한 상태 이미지
+      }
+    }
+
+    window.onload = loadModel;
+  </script>
+</body>
+</html>
