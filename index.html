@@ -28,46 +28,57 @@
     let model;
     let isTalking = false;
 
+    // Teachable Machine 모델 로드 함수
     async function loadModel() {
-      const URL = https://teachablemachine.withgoogle.com/models/zvC-4aSDG/; // 여기에 Teachable Machine 모델 URL을 입력
-      model = await tmImage.load(URL + "/model.json", URL + "/metadata.json");
+      const URL = "https://teachablemachine.withgoogle.com/models/zvC-4aSDG/"; // Teachable Machine 모델 URL
+      model = await tmImage.load(URL + "model.json", URL + "metadata.json");
       detectSound();
     }
 
+    // 마이크 권한 요청 및 소리 감지 시작 함수
     async function detectSound() {
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const analyser = audioContext.createAnalyser();
-      const microphone = await navigator.mediaDevices.getUserMedia({ audio: true });
+      try {
+        // 마이크 권한 요청
+        await navigator.mediaDevices.getUserMedia({ audio: true });
 
-      const source = audioContext.createMediaStreamSource(microphone);
-      source.connect(analyser);
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const analyser = audioContext.createAnalyser();
+        const microphone = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-      const bufferLength = analyser.frequencyBinCount;
-      const dataArray = new Uint8Array(bufferLength);
+        const source = audioContext.createMediaStreamSource(microphone);
+        source.connect(analyser);
 
-      function detect() {
-        analyser.getByteFrequencyData(dataArray);
-        let talkingDetected = false;
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
 
-        // 소리가 감지되면 잡담으로 인식
-        for (let i = 0; i < dataArray.length; i++) {
-          if (dataArray[i] > 50) { // 소리 임계값 설정
-            talkingDetected = true;
-            break;
+        // 소리 감지 함수
+        function detect() {
+          analyser.getByteFrequencyData(dataArray);
+          let talkingDetected = false;
+
+          // 소리가 감지되면 잡담으로 인식
+          for (let i = 0; i < dataArray.length; i++) {
+            if (dataArray[i] > 50) { // 소리 임계값 설정
+              talkingDetected = true;
+              break;
+            }
           }
+
+          if (talkingDetected !== isTalking) {
+            isTalking = talkingDetected;
+            updateUI();
+          }
+
+          requestAnimationFrame(detect);
         }
 
-        if (talkingDetected !== isTalking) {
-          isTalking = talkingDetected;
-          updateUI();
-        }
-
-        requestAnimationFrame(detect);
+        detect();
+      } catch (err) {
+        alert("마이크를 사용할 수 없습니다: " + err.message);
       }
-
-      detect();
     }
 
+    // UI 업데이트 함수 (잡담 여부에 따라 상태와 이미지를 변경)
     function updateUI() {
       const status = document.getElementById("status");
       const image = document.getElementById("image");
@@ -81,6 +92,7 @@
       }
     }
 
+    // 페이지 로드 시 모델 로드 함수 실행
     window.onload = loadModel;
   </script>
 </body>
